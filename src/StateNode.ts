@@ -634,8 +634,8 @@ class StateNode<
         }
 
         return new Set([
-          ...Array.from(allReentryStates),
-          ...Array.from(reentryStates)
+          ...Array.from(allReentryStates.values()),
+          ...Array.from(reentryStates.values())
         ]);
       }, new Set<StateNode<TContext>>()),
       actions: flatten(
@@ -889,7 +889,7 @@ class StateNode<
 
     const entryExitActions = {
       entry: flatten(
-        Array.from(new Set(entryExitStates.entry)).map(stateNode => {
+        Array.from(new Set(entryExitStates.entry.values())).map(stateNode => {
           return [
             ...stateNode.onEntry,
             ...stateNode.activities.map(activity => start(activity)),
@@ -900,7 +900,7 @@ class StateNode<
         })
       ).concat(doneEvents.map(raise)),
       exit: flatten(
-        Array.from(new Set(entryExitStates.exit)).map(stateNode => [
+        Array.from(new Set(entryExitStates.exit.values())).map(stateNode => [
           ...stateNode.onExit,
           ...stateNode.activities.map(activity => stop(activity)),
           ...stateNode.delays.map(({ delay, id }) => cancel(after(delay, id)))
@@ -935,13 +935,13 @@ class StateNode<
 
     const activityMap = { ...activities };
 
-    Array.from(entryExitStates.exit).forEach(stateNode => {
+    Array.from(entryExitStates.exit.values()).forEach(stateNode => {
       stateNode.activities.forEach(activity => {
         activityMap[activity.type] = false;
       });
     });
 
-    Array.from(entryExitStates.entry).forEach(stateNode => {
+    Array.from(entryExitStates.entry.values()).forEach(stateNode => {
       stateNode.activities.forEach(activity => {
         activityMap[activity.type] = true;
       });
@@ -1715,7 +1715,7 @@ class StateNode<
       });
     }
 
-    return (this.__cache.events = Array.from(events));
+    return (this.__cache.events = Array.from(events.values()));
   }
 
   /**
@@ -1737,7 +1737,7 @@ class StateNode<
       })
     );
 
-    return Array.from(events);
+    return Array.from(events.values());
   }
   private formatTransition(
     target: string | string[] | undefined,
