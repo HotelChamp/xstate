@@ -18,6 +18,7 @@
     "version": "npm run build",
     "postversion": "git push --follow-tags",
     "prepublish": "npm run build",
+    "prepare": "npm run build",
     "publish:beta": "npm version patch && npm publish --tag beta"
   },
   "repository": {
