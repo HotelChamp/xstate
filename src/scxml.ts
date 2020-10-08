@@ -1,9 +1,9 @@
-import { js2xml, xml2js, Element as XMLElement } from 'xml-js';
-import { Machine, EventObject } from './types';
+import { Element as XMLElement, js2xml, xml2js } from 'xml-js';
+import * as actions from './actions';
 // import * as xstate from './index';
 import { StateNode } from './index';
-import { mapValues, getActionType } from './utils';
-import * as actions from './actions';
+import { EventObject, Machine } from './types';
+import { getActionType, mapValues } from './utils';
 
 function stateNodeToSCXML(stateNode: StateNode) {
   const { parallel } = stateNode;
@@ -71,7 +71,7 @@ function stateNodeToSCXML(stateNode: StateNode) {
             }
 
             if (Array.isArray(transition)) {
-              return transition.map(targetTransition => {
+              return transition.map((targetTransition: any) => {
                 return {
                   type: 'element',
                   name: 'transition',
@@ -98,7 +98,7 @@ function stateNodeToSCXML(stateNode: StateNode) {
             }
 
             return Object.keys(transition).map(target => {
-              const targetTransition = transition[target];
+              const targetTransition: any = transition[target];
 
               return {
                 type: 'element',
