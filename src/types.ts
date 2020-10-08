@@ -1,3 +1,4 @@
+// @ts-ignore
 import { StateNode } from './StateNode';
 import { State } from './State';
 
