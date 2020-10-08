@@ -1,6 +1,7 @@
 // @ts-ignore
 import { State } from './State';
-import { StateNode as ImportStateNode } from './StateNode';
+// @ts-ignore
+import { StateNode } from './StateNode';
 
 export type EventType = string | number;
 export type ActionType = string | number;
@@ -74,7 +75,7 @@ export interface StateNodeConfig {
   onEntry?: Action | Action[];
   onExit?: Action | Action[];
   activities?: Activity[];
-  parent?: ImportStateNode;
+  parent?: StateNode;
   strict?: boolean | undefined;
   data?: object | undefined;
   id?: string | undefined;
@@ -125,20 +126,20 @@ export interface EntryExitEffectMap {
   exit: Action[];
 }
 
-export interface StateNode {
-  key: string;
-  id: string;
-  initial: string | undefined;
-  parallel: boolean;
-  transient: boolean;
-  history: false | 'shallow' | 'deep';
-  states: Record<string, StateNode>;
-  on?: Record<string, Transition>;
-  onEntry?: Action | Action[];
-  onExit?: Action | Action[];
-  parent: StateNode | undefined;
-  machine: Machine;
-}
+// export interface StateNode {
+//   key: string;
+//   id: string;
+//   initial: string | undefined;
+//   parallel: boolean;
+//   transient: boolean;
+//   history: false | 'shallow' | 'deep';
+//   states: Record<string, StateNode>;
+//   on?: Record<string, Transition>;
+//   onEntry?: Action | Action[];
+//   onExit?: Action | Action[];
+//   parent: StateNode | undefined;
+//   machine: Machine;
+// }
 
 export interface ComplexStateNode extends StateNode {
   initial: string;
