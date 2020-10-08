@@ -1,6 +1,6 @@
 // @ts-ignore
-import { StateNode } from './StateNode';
 import { State } from './State';
+import { StateNode as ImportStateNode } from './StateNode';
 
 export type EventType = string | number;
 export type ActionType = string | number;
@@ -74,7 +74,7 @@ export interface StateNodeConfig {
   onEntry?: Action | Action[];
   onExit?: Action | Action[];
   activities?: Activity[];
-  parent?: StateNode;
+  parent?: ImportStateNode;
   strict?: boolean | undefined;
   data?: object | undefined;
   id?: string | undefined;
