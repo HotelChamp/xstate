@@ -1,48 +1,47 @@
-import {
-  getEventType,
-  toStatePath,
-  toStateValue,
-  mapValues,
-  path,
-  toStatePaths,
-  pathsToStateValue,
-  pathToStateValue,
-  getActionType,
-  flatMap,
-  mapFilterValues,
-  nestedPath
-} from './utils';
-import {
-  Event,
-  StateValue,
-  Transition,
-  Action,
-  Machine,
-  StandardMachine,
-  ParallelMachine,
-  SimpleOrCompoundStateNodeConfig,
-  ParallelMachineConfig,
-  EventType,
-  StandardMachineConfig,
-  TransitionConfig,
-  ActivityMap,
-  Activity,
-  ConditionalTransitionConfig,
-  EntryExitStates,
-  TargetTransitionConfig,
-  StateTransition,
-  ActionObject,
-  StateValueMap,
-  MachineOptions,
-  Condition,
-  ConditionPredicate,
-  EventObject,
-  HistoryStateNodeConfig,
-  HistoryValue
-} from './types';
+import { actionTypes, start, stop, toEventObject } from './actions';
 import { matchesState } from './matchesState';
 import { State } from './State';
-import { start, stop, toEventObject, actionTypes } from './actions';
+import {
+  Action,
+  ActionObject,
+  Activity,
+  ActivityMap,
+  Condition,
+  ConditionalTransitionConfig,
+  ConditionPredicate,
+  EntryExitStates,
+  Event,
+  EventObject,
+  EventType,
+  HistoryStateNodeConfig,
+  HistoryValue,
+  MachineOptions,
+  ParallelMachine,
+  ParallelMachineConfig,
+  SimpleOrCompoundStateNodeConfig,
+  StandardMachine,
+  StandardMachineConfig,
+  StateTransition,
+  StateValue,
+  StateValueMap,
+  TargetTransitionConfig,
+  Transition,
+  TransitionConfig
+} from './types';
+import {
+  flatMap,
+  getActionType,
+  getEventType,
+  mapFilterValues,
+  mapValues,
+  nestedPath,
+  path,
+  pathsToStateValue,
+  pathToStateValue,
+  toStatePath,
+  toStatePaths,
+  toStateValue
+} from './utils';
 
 const STATE_DELIMITER = '.';
 const HISTORY_KEY = '$history';
@@ -52,6 +51,153 @@ const isStateId = (str: string) => str[0] === STATE_IDENTIFIER;
 const defaultOptions: MachineOptions = {
   guards: {}
 };
+
+/**
+ * arrayFrom
+ * fixes issues with invalid arrayFrom polyfill which will fail
+ * on Set an Maps
+ */
+// tslint:disable-next-line: only-arrow-functions
+const arrayFrom = (function() {
+  let symbolIterator;
+  try {
+    symbolIterator = Symbol.iterator
+      ? Symbol.iterator
+      : 'Symbol(Symbol.iterator)';
+  } catch (e) {
+    symbolIterator = 'Symbol(Symbol.iterator)';
+  }
+
+  const toStr = Object.prototype.toString;
+  // tslint:disable-next-line: only-arrow-functions
+  const isCallable = function(fn) {
+    return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
+  };
+  // tslint:disable-next-line: only-arrow-functions
+  const toInteger = function(value) {
+    const number = Number(value);
+    if (isNaN(number)) {
+      return 0;
+    }
+    if (number === 0 || !isFinite(number)) {
+      return number;
+    }
+    return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+  };
+  const maxSafeInteger = Math.pow(2, 53) - 1;
+  // tslint:disable-next-line: only-arrow-functions
+  const toLength = function(value) {
+    const len = toInteger(value);
+    return Math.min(Math.max(len, 0), maxSafeInteger);
+  };
+
+  // tslint:disable-next-line: no-shadowed-variable
+  const setGetItemHandler = function setGetItemHandler(isIterator, items) {
+    const iterator = isIterator && items[symbolIterator]();
+
+    return function getItem(k) {
+      return isIterator ? iterator.next() : items[k];
+    };
+  };
+
+  // tslint:disable-next-line: no-shadowed-variable
+  const getArray = function getArray(
+    T: any,
+    A: any,
+    len: any,
+    getItem: any,
+    isIterator: any,
+    mapFn: any
+  ) {
+    // 16. Let k be 0.
+    let k = 0;
+
+    // 17. Repeat, while k < len… or while iterator is done (also steps a - h)
+    while (k < len || isIterator) {
+      const item = getItem(k);
+      const kValue = isIterator ? item.value : item;
+
+      if (isIterator && item.done) {
+        return A;
+      } else {
+        if (mapFn) {
+          A[k] =
+            typeof T === 'undefined'
+              ? mapFn(kValue, k)
+              : mapFn.call(T, kValue, k);
+        } else {
+          A[k] = kValue;
+        }
+      }
+      k += 1;
+    }
+
+    if (isIterator) {
+      throw new TypeError(
+        'arrayFrom: provided arrayLike or iterator has length more then 2 ** 52 - 1'
+      );
+    } else {
+      A.length = len;
+    }
+
+    return A;
+  };
+
+  // The length property of the from method is 1.
+  return function from(arrayLikeOrIterator /*, mapFn, thisArg */) {
+    // 1. Let C be the this value.
+    const C = this;
+
+    // 2. Let items be ToObject(arrayLikeOrIterator).
+    const items = Object(arrayLikeOrIterator);
+    const isIterator = isCallable(items[symbolIterator]);
+
+    // 3. ReturnIfAbrupt(items).
+    if (arrayLikeOrIterator == null && !isIterator) {
+      throw new TypeError(
+        'arrayFrom requires an array-like object or iterator - not null or undefined'
+      );
+    }
+
+    // 4. If mapfn is undefined, then let mapping be false.
+    // tslint:disable-next-line: no-unused-expression
+    const mapFn: any = arguments.length > 1 ? arguments[1] : void undefined;
+    let T: any;
+    if (typeof mapFn !== 'undefined') {
+      // 5. else
+      // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+      if (!isCallable(mapFn)) {
+        throw new TypeError(
+          'arrayFrom: when provided, the second argument must be a function'
+        );
+      }
+
+      // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+      if (arguments.length > 2) {
+        T = arguments[2];
+      }
+    }
+
+    // 10. Let lenValue be Get(items, "length").
+    // 11. Let len be ToLength(lenValue).
+    const len = toLength(items.length);
+
+    // 13. If IsConstructor(C) is true, then
+    // 13. a. Let A be the result of calling the [[Construct]] internal method
+    // of C with an argument list containing the single item len.
+    // 14. a. Else, Let A be ArrayCreate(len).
+    const A = isCallable(C) ? Object(new C(len)) : new Array(len);
+
+    return getArray(
+      T,
+      A,
+      len,
+      setGetItemHandler(isIterator, items),
+      isIterator,
+      mapFn
+    );
+  };
+})();
 
 class StateNode {
   public key: string;
@@ -196,7 +342,7 @@ class StateNode {
           exit: new Set<StateNode>([
             stateNode,
             ...(entryExitStates
-              ? Array.from(entryExitStates.exit.values())
+              ? arrayFrom(entryExitStates.exit.values())
               : ([] as StateNode[]))
           ])
         },
@@ -236,11 +382,11 @@ class StateNode {
           entry: entryExitStates ? entryExitStates.entry : new Set(),
           exit: new Set<StateNode>([
             ...(next.entryExitStates
-              ? Array.from(next.entryExitStates.exit.values())
+              ? arrayFrom(next.entryExitStates.exit.values())
               : []),
             stateNode,
             ...(entryExitStates
-              ? Array.from(entryExitStates.exit.values())
+              ? arrayFrom(entryExitStates.exit.values())
               : ([] as StateNode[]))
           ])
         },
@@ -298,9 +444,7 @@ class StateNode {
           entry: entryExitStates ? entryExitStates.entry : new Set(),
           exit: new Set([
             ...Object.keys(this.states).map(key => this.states[key]),
-            ...(entryExitStates
-              ? Array.from(entryExitStates.exit.values())
-              : [])
+            ...(entryExitStates ? arrayFrom(entryExitStates.exit.values()) : [])
           ])
         },
         actions,
@@ -327,12 +471,12 @@ class StateNode {
 
               return {
                 entry: new Set([
-                  ...Array.from(allEntryExitStates!.entry.values()),
-                  ...Array.from(entry.values())
+                  ...arrayFrom(allEntryExitStates!.entry.values()),
+                  ...arrayFrom(entry.values())
                 ]),
                 exit: new Set([
-                  ...Array.from(allEntryExitStates!.exit.values()),
-                  ...Array.from(exit.values())
+                  ...arrayFrom(allEntryExitStates!.exit.values()),
+                  ...arrayFrom(exit.values())
                 ])
               };
             },
@@ -378,12 +522,12 @@ class StateNode {
 
           return {
             entry: new Set([
-              ...Array.from(allEntryExitStates.entry.values()),
-              ...Array.from(entry.values())
+              ...arrayFrom(allEntryExitStates.entry.values()),
+              ...arrayFrom(entry.values())
             ]),
             exit: new Set([
-              ...Array.from(allEntryExitStates.exit.values()),
-              ...Array.from(exit.values())
+              ...arrayFrom(allEntryExitStates.exit.values()),
+              ...arrayFrom(exit.values())
             ])
           };
         },
@@ -510,12 +654,12 @@ class StateNode {
 
         return {
           entry: new Set([
-            ...Array.from(allEntryExitStates.entry.values()),
-            ...Array.from(entry.values())
+            ...arrayFrom(allEntryExitStates.entry.values()),
+            ...arrayFrom(entry.values())
           ]),
           exit: new Set([
-            ...Array.from(allEntryExitStates.exit.values()),
-            ...Array.from(exit.values())
+            ...arrayFrom(allEntryExitStates.exit.values()),
+            ...arrayFrom(exit.values())
           ])
         };
       },
@@ -619,7 +763,7 @@ class StateNode {
     const entryExitActions = {
       entry: transition.entryExitStates
         ? flatMap(
-            Array.from(transition.entryExitStates.entry.values()).map(n => [
+            arrayFrom(transition.entryExitStates.entry.values()).map(n => [
               ...n.onEntry,
               ...(n.activities
                 ? n.activities.map(activity => start(activity))
@@ -629,7 +773,7 @@ class StateNode {
         : [],
       exit: transition.entryExitStates
         ? flatMap(
-            Array.from(transition.entryExitStates.exit.values()).map(n => [
+            arrayFrom(transition.entryExitStates.exit.values()).map(n => [
               ...n.onExit,
               ...(n.activities
                 ? n.activities.map(activity => stop(activity))
@@ -643,7 +787,7 @@ class StateNode {
       .concat(transition.actions || [])
       .concat(entryExitActions.entry || []);
 
-    return actions;
+    return actions as any;
   }
   private _getActivities(
     state: State,
@@ -655,7 +799,7 @@ class StateNode {
 
     const activityMap = { ...state.activities };
 
-    Array.from(transition.entryExitStates.exit.values()).forEach(stateNode => {
+    arrayFrom(transition.entryExitStates.exit.values()).forEach(stateNode => {
       if (!stateNode.activities) {
         return; // TODO: fixme
       }
@@ -665,7 +809,7 @@ class StateNode {
       });
     });
 
-    Array.from(transition.entryExitStates.entry.values()).forEach(stateNode => {
+    arrayFrom(transition.entryExitStates.entry.values()).forEach(stateNode => {
       if (!stateNode.activities) {
         return; // TODO: fixme
       }
@@ -1265,7 +1409,7 @@ class StateNode {
       });
     }
 
-    return (this.__cache.events = Array.from(events.values()));
+    return (this.__cache.events = arrayFrom(events.values()));
   }
   private formatTransition(
     targets: string[],
